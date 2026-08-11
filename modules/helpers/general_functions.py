@@ -104,9 +104,9 @@ def table_simple_upsert(UC_catalog_, UC_schema_, table_name_, df_, conditions_:l
         print(metrics.show())
     return None
 
-def read_from_sql_server(query_, host_, user_, password_, database_, post_):
+def read_from_sql_server(query_, host_, user_, password_, database_, port_):
     remote_table = (spark.read.format("sqlserver")  
-    .option("port", post_)
+    .option("port", port_)
     .option("host", host_)
     .option("user", user_)
     .option("password", password_)
