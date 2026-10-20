@@ -116,3 +116,32 @@ def read_from_sql_server(query_, host_, user_, password_, database_, port_):
     .load()
     )
     return remote_table
+
+def move_volume_file(source_path_: str, target_path_: str, file_name_: str, overwrite_: bool = False) -> str:
+    """
+    Move a file within Databricks Volumes.
+
+    source_path: full path to the file, e.g. /Volumes/catalog/schema/volume/in/data.csv
+    destination: a target folder (ending in '/') or a full target file path
+    overwrite:   if False, raises an error when the target already exists
+    """
+    # Make sure the source exists
+    try:
+        dbutils.fs.ls(source_path_ + file_name_)
+    except Exception:
+        raise FileNotFoundError(f"Source file {file_name_} not found in: {source_path_}")
+
+    # Check whether the target already exists
+    try:
+        dbutils.fs.ls(target_path_)
+        if not overwrite_:
+            raise FileExistsError(f"File already exists: {target_path_}")
+        dbutils.fs.rm(target_path_)
+    except FileExistsError:
+        raise
+    except Exception:
+        pass  # target doesn't exist, which is fine
+
+    dbutils.fs.mv(source_path_ + file_name_, target_path_ + file_name_)
+
+    return target_path_
