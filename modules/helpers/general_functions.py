@@ -145,3 +145,51 @@ def move_volume_file(source_path_: str, target_path_: str, file_name_: str, over
     dbutils.fs.mv(source_path_ + file_name_, target_path_ + file_name_)
 
     return target_path_
+
+
+def read_excel(file_path_: str, schema_= None,  **kwargs):
+    """
+    Read excel from external location as a DataFrame. You can pass option arguments as a python dictionary.
+    """
+ 
+    df = spark.read.format("excel")
+ 
+    for i in kwargs.keys():
+        df = df.option(i, kwargs[i])
+   
+    if schema_ is not None:
+        df = df.schema(schema_)
+ 
+    df = df.load(file_path_)
+    return df
+ 
+def save_as_parquet(df_ , target_path_ : str, **kwargs):
+    """
+    Save dataframe as parquet on defined location
+    """
+ 
+    # return df_.repartition(1).write.mode("overwrite").parquet(target_path_, **kwargs)
+    df_.coalesce(1).write.format("parquet").mode("overwrite").save(target_path_)
+        # Find the Parquet file in the temporary folder
+    files = dbutils.fs.ls(target_path_)
+    output_file = next(x for x in files if x.name.startswith("part-"))
+ 
+    temporal_path = target_path_.replace(".parquet", "_temp.parquet")
+    dbutils.fs.mv(output_file.path, temporal_path)
+ 
+    # Delete filepath, if it exists
+    try:
+        dbutils.fs.ls(target_path_)
+        # Filepath exists
+        print(f"Deleting old {target_path_}")
+        dbutils.fs.rm(target_path_, recurse=True)
+    except Exception as e:
+        if "java.io.FileNotFoundException" not in str(e):
+            raise e
+ 
+    # Move the Parquet file to the final location
+    dbutils.fs.mv(temporal_path, target_path_)
+ 
+    # Delete temporary folder
+    dbutils.fs.rm(temporal_path, True)
+    print(f"Wrote '{target_path_}'")
